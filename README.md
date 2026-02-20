@@ -23,7 +23,8 @@
 - 🧠 **代码分析** - 解析 AST、提取函数签名、分析依赖关系 (v1.1.0)
 - 🗜️ **上下文压缩** - 自动压缩对话历史，支持长对话不超限 (v1.1.0)
 - 🔌 **MCP 协议支持** - 接入任意 MCP 工具，无限扩展能力 (v1.2.0)
-- 🌐 **现代化 Web 界面** - Next.js + Flask 架构，实时通信，美观易用 (v1.3.0) ⭐ 新增
+- 🌐 **现代化 Web 界面** - Next.js + Flask 架构，实时通信，美观易用 (v1.3.0)
+- 🎯 **Skill 专家技能系统** - 根据任务自动激活领域专家能力，注入专用 prompt 和工具 (v1.4.0) ⭐ 新增
 
 ### 🛠️ 工具能力
 - 📝 **代码编辑** - 精确编辑文件指定行，支持插入/替换/删除
@@ -65,6 +66,15 @@
 - **生命周期管理** - 自动启动和停止 MCP 服务器进程
 - **常见 MCP 支持** - Playwright、Context7、Filesystem、SQLite 等
 - **详细文档** - 参见 [MCP_GUIDE.md](MCP_GUIDE.md) 获取完整接入指南
+
+#### 🎯 Skill 专家技能系统 ⭐ v1.4.0 新增
+- **自动激活** - 根据任务描述自动选择并激活最相关的领域专家技能
+- **内置 3 个专家** - Python 专家、数据库专家、前端开发专家，开箱即用
+- **专用工具注入** - 每个技能可携带专用工具（如 `python_best_practices`、`sql_review`）
+- **专用 Prompt 增强** - 激活技能后自动注入领域最佳实践到 system prompt
+- **自定义技能** - 支持 JSON 配置文件快速创建自定义技能，无需写代码
+- **Python 类扩展** - 复杂场景支持 Python 类定义技能，可添加自定义工具
+- **详细文档** - 参见 [SKILL_GUIDE.md](SKILL_GUIDE.md) 获取完整接入指南
 
 ### 🤖 多模型支持
 - **DeepSeek** - 默认模型，性价比高
@@ -249,9 +259,10 @@ python main.py
   2. 多轮对话模式
   3. 查看可用工具列表
   4. 配置设置
-  5. 退出程序
+  5. 查看可用技能列表
+  6. 退出程序
 
-请选择操作 (1-5):
+请选择操作 (1-6):
 ```
 
 ### 命令行模式（快速执行）
@@ -352,6 +363,40 @@ python main.py "获取与当前任务相关的历史上下文"
 3. 工具自动可用
 
 详见：[MCP_GUIDE.md](MCP_GUIDE.md)
+
+### 示例 0.6: Skill 专家技能 ⭐ v1.4.0
+
+Agent 会根据任务自动激活相关技能，无需手动配置：
+
+```bash
+# Python 专家自动激活
+python main.py "写一个解析 CSV 的 Python 脚本，要求使用类型提示"
+# 🎯 已激活技能：Python 专家
+
+# 数据库专家 + Python 专家自动激活
+python main.py "优化我 Django 项目中的 SQL 查询"
+# 🎯 已激活技能：Python 专家, 数据库专家
+
+# 前端开发专家自动激活
+python main.py "创建一个 React 组件来显示用户列表"
+# 🎯 已激活技能：前端开发专家
+```
+
+#### 创建自定义技能
+
+只需在 `dm_agent/skills/custom/` 目录下创建 JSON 文件即可：
+
+```json
+{
+  "name": "devops_expert",
+  "display_name": "DevOps 专家",
+  "description": "提供 Docker、K8s、CI/CD 最佳实践指导",
+  "keywords": ["docker", "kubernetes", "ci/cd", "部署"],
+  "prompt_addition": "你现在具备 DevOps 专家能力..."
+}
+```
+
+详见：[SKILL_GUIDE.md](SKILL_GUIDE.md)
 
 ### 示例 1: 代码编辑
 ```bash
@@ -474,7 +519,13 @@ python main.py [任务] [选项]
 
 修改后可选择保存到 `config.json`，下次启动自动加载。
 
-### 5️⃣ 退出程序
+### 5️⃣ 查看技能列表 ⭐ v1.4.0 新增
+查看所有可用的专家技能及其状态：
+- 显示技能名称、描述、关键词、专用工具数量
+- 区分内置技能和自定义技能
+- 显示技能当前激活状态
+
+### 6️⃣ 退出程序
 安全退出应用。
 
 ## ⚙️ 配置管理
@@ -544,6 +595,18 @@ dm-code-agent/
 │   │   ├── client.py             # MCP 客户端
 │   │   ├── config.py             # MCP 配置管理
 │   │   └── manager.py            # MCP 管理器
+│   ├── skills/                    # Skill 专家技能系统 (v1.4.0) ⭐ 新增
+│   │   ├── __init__.py           # 模块导出
+│   │   ├── base.py               # 技能基类和元数据定义
+│   │   ├── selector.py           # 技能自动选择器
+│   │   ├── manager.py            # 技能管理器
+│   │   ├── builtin/              # 内置技能
+│   │   │   ├── __init__.py
+│   │   │   ├── python_expert.py  # Python 专家
+│   │   │   ├── db_expert.py      # 数据库专家
+│   │   │   └── frontend_dev.py   # 前端开发专家
+│   │   └── custom/               # 自定义技能 (JSON 文件)
+│   │       └── .gitkeep
 │   ├── memory/                    # 记忆和上下文管理 (v1.1.0)
 │   │   ├── __init__.py
 │   │   └── context_compressor.py # 上下文压缩器
@@ -565,6 +628,7 @@ dm-code-agent/
 ├── WEB_SETUP.md                   # Web 界面启动指南 ⭐ v1.3.0 新增
 ├── DESIGN_DOC.md                  # 前端设计文档 ⭐ v1.3.0 新增
 ├── MCP_GUIDE.md                   # MCP 接入指南 (v1.2.0)
+├── SKILL_GUIDE.md                 # Skill 技能系统指南 (v1.4.0) ⭐ 新增
 ├── README.md                      # 中文说明文档
 └── README_EN.md                   # 英文说明文档
 ```

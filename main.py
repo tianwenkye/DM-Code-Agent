@@ -20,6 +20,7 @@ from dm_agent import (
     PROVIDER_DEFAULTS,
 )
 from dm_agent.mcp import MCPManager, load_mcp_config
+from dm_agent.skills import SkillManager
 
 # 尝试导入 colorama 用于彩色输出
 try:
@@ -193,7 +194,8 @@ def print_menu() -> None:
     print(f"{Fore.GREEN}  2.{Style.RESET_ALL} 多轮对话模式")
     print(f"{Fore.GREEN}  3.{Style.RESET_ALL} 查看可用工具列表")
     print(f"{Fore.GREEN}  4.{Style.RESET_ALL} 配置设置")
-    print(f"{Fore.GREEN}  5.{Style.RESET_ALL} 退出程序")
+    print(f"{Fore.GREEN}  5.{Style.RESET_ALL} 查看可用技能列表")
+    print(f"{Fore.GREEN}  6.{Style.RESET_ALL} 退出程序")
     print()
 
 
@@ -206,6 +208,28 @@ def show_tools(tools: List[Tool]) -> None:
         print(f"{Fore.GREEN}{idx}. {tool.name}{Style.RESET_ALL}")
         print(f"   {Fore.YELLOW}描述：{Style.RESET_ALL}{tool.description}")
         print()
+
+    print_separator("-")
+
+
+def show_skills(skill_manager: SkillManager) -> None:
+    """显示可用技能列表"""
+    print_separator("-")
+    print(f"{Fore.CYAN}{Style.BRIGHT}可用技能列表：{Style.RESET_ALL}\n")
+
+    skills_info = skill_manager.get_all_skill_info()
+    if not skills_info:
+        print(f"{Fore.YELLOW}暂无可用技能{Style.RESET_ALL}")
+    else:
+        for idx, info in enumerate(skills_info, start=1):
+            status = f"{Fore.GREEN}[激活]{Style.RESET_ALL}" if info["is_active"] else ""
+            source = "内置" if info["is_builtin"] else "自定义"
+            print(f"{Fore.GREEN}{idx}. {info['display_name']}{Style.RESET_ALL} {status}")
+            print(f"   {Fore.YELLOW}标识：{Style.RESET_ALL}{info['name']}")
+            print(f"   {Fore.YELLOW}描述：{Style.RESET_ALL}{info['description']}")
+            print(f"   {Fore.YELLOW}类型：{Style.RESET_ALL}{source}  {Fore.YELLOW}版本：{Style.RESET_ALL}{info['version']}  {Fore.YELLOW}专用工具：{Style.RESET_ALL}{info['tools_count']} 个")
+            print(f"   {Fore.YELLOW}关键词：{Style.RESET_ALL}{', '.join(info['keywords'][:8])}{'...' if len(info['keywords']) > 8 else ''}")
+            print()
 
     print_separator("-")
 
@@ -358,7 +382,7 @@ def create_step_callback(show_steps: bool):
     return callback
 
 
-def multi_turn_conversation(config: Config, tools: List[Tool]) -> None:
+def multi_turn_conversation(config: Config, tools: List[Tool], skill_manager: SkillManager | None = None) -> None:
     """多轮对话模式"""
     print_separator("-")
     print(f"{Fore.CYAN}{Style.BRIGHT}多轮对话模式{Style.RESET_ALL}\n")
@@ -382,6 +406,7 @@ def multi_turn_conversation(config: Config, tools: List[Tool]) -> None:
             max_steps=config.max_steps,
             temperature=config.temperature,
             step_callback=step_callback,
+            skill_manager=skill_manager,
         )
 
         conversation_count = 0
@@ -433,7 +458,7 @@ def multi_turn_conversation(config: Config, tools: List[Tool]) -> None:
         print_separator("-")
 
 
-def execute_task(config: Config, tools: List[Tool]) -> None:
+def execute_task(config: Config, tools: List[Tool], skill_manager: SkillManager | None = None) -> None:
     """执行任务"""
     print_separator("-")
     print(f"{Fore.CYAN}{Style.BRIGHT}执行新任务{Style.RESET_ALL}\n")
@@ -463,6 +488,7 @@ def execute_task(config: Config, tools: List[Tool]) -> None:
             max_steps=config.max_steps,
             temperature=config.temperature,
             step_callback=step_callback,
+            skill_manager=skill_manager,
         )
 
         print(f"\n{Fore.CYAN}正在执行任务...{Style.RESET_ALL}\n")
@@ -511,19 +537,27 @@ def interactive_mode(config: Config) -> int:
     if mcp_tools:
         print(f"{Fore.GREEN}✓ 加载了 {len(mcp_tools)} 个 MCP 工具{Style.RESET_ALL}")
 
+    # 初始化技能管理器
+    skill_manager = SkillManager()
+    skill_count = skill_manager.load_all()
+    if skill_count > 0:
+        print(f"{Fore.GREEN}✓ 加载了 {skill_count} 个技能{Style.RESET_ALL}")
+    else:
+        print(f"{Fore.YELLOW}ℹ 未加载任何技能{Style.RESET_ALL}")
+
     try:
         while True:
             try:
                 print_menu()
-                choice = input(f"{Fore.CYAN}请选择操作 (1-5): {Style.RESET_ALL}").strip()
+                choice = input(f"{Fore.CYAN}请选择操作 (1-6): {Style.RESET_ALL}").strip()
 
                 if choice == "1":
                     # 执行新任务
-                    execute_task(config, tools)
+                    execute_task(config, tools, skill_manager)
 
                 elif choice == "2":
                     # 多轮对话模式
-                    multi_turn_conversation(config, tools)
+                    multi_turn_conversation(config, tools, skill_manager)
 
                 elif choice == "3":
                     # 查看工具列表
@@ -534,12 +568,16 @@ def interactive_mode(config: Config) -> int:
                     configure_settings(config)
 
                 elif choice == "5":
+                    # 查看技能列表
+                    show_skills(skill_manager)
+
+                elif choice == "6":
                     # 退出程序
                     print(f"\n{Fore.YELLOW}感谢使用！再见！{Style.RESET_ALL}\n")
                     return 0
 
                 else:
-                    print(f"{Fore.RED}✗ 无效的选择，请输入 1-5{Style.RESET_ALL}")
+                    print(f"{Fore.RED}✗ 无效的选择，请输入 1-6{Style.RESET_ALL}")
 
             except KeyboardInterrupt:
                 print(f"\n\n{Fore.YELLOW}感谢使用！再见！{Style.RESET_ALL}\n")
@@ -573,6 +611,10 @@ def run_single_task(config: Config, task: str) -> int:
         mcp_tools = mcp_manager.get_tools()
         tools = default_tools(include_mcp=True, mcp_tools=mcp_tools)
 
+        # 初始化技能管理器
+        skill_manager = SkillManager()
+        skill_manager.load_all()
+
         client = create_llm_client(
             provider=config.provider,
             api_key=config.api_key,
@@ -589,6 +631,7 @@ def run_single_task(config: Config, task: str) -> int:
             max_steps=config.max_steps,
             temperature=config.temperature,
             step_callback=step_callback,
+            skill_manager=skill_manager,
         )
 
         print(f"\n{Fore.CYAN}正在执行任务：{Style.RESET_ALL}{task}\n")

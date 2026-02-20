@@ -22,6 +22,7 @@ from dm_agent import (
     PROVIDER_DEFAULTS,
 )
 from dm_agent.mcp import MCPManager, load_mcp_config
+from dm_agent.skills import SkillManager
 
 # 加载环境变量
 load_dotenv()
@@ -38,6 +39,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # 全局变量
 mcp_manager: MCPManager | None = None
+skill_manager: SkillManager | None = None
 tools_cache: List[Tool] = []
 sessions: Dict[str, Dict[str, Any]] = {}  # 存储会话信息
 conversation_history: Dict[str, List[Dict[str, Any]]] = {}  # 存储对话历史
@@ -182,6 +184,24 @@ def get_tools():
     })
 
 
+@app.route('/api/skills', methods=['GET'])
+def get_skills():
+    """获取可用技能列表"""
+    if skill_manager is None:
+        return jsonify({
+            'status': 'success',
+            'skills': [],
+            'count': 0
+        })
+
+    skills_info = skill_manager.get_all_skill_info()
+    return jsonify({
+        'status': 'success',
+        'skills': skills_info,
+        'count': len(skills_info)
+    })
+
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """处理聊天请求"""
@@ -230,6 +250,7 @@ def chat():
                 max_steps=max_steps,
                 temperature=temperature,
                 step_callback=step_callback,
+                skill_manager=skill_manager,
             )
 
             sessions[session_id] = {
@@ -384,7 +405,7 @@ def handle_subscribe(data):
 
 def initialize_app():
     """初始化应用"""
-    global mcp_manager, tools_cache
+    global mcp_manager, skill_manager, tools_cache
 
     print("正在初始化 DM Agent Web 应用...")
 
@@ -415,6 +436,18 @@ def initialize_app():
         # 即使 MCP 初始化失败，也继续使用默认工具
         tools_cache = default_tools(include_mcp=False)
         print(f"✓ 使用默认工具集 ({len(tools_cache)} 个)")
+
+    # 初始化技能管理器
+    try:
+        skill_manager = SkillManager()
+        skill_count = skill_manager.load_all()
+        if skill_count > 0:
+            print(f"✓ 加载了 {skill_count} 个技能")
+        else:
+            print("ℹ 未加载任何技能")
+    except Exception as e:
+        print(f"⚠ 技能管理器初始化警告: {e}")
+        skill_manager = None
 
     print("✓ DM Agent Web 应用初始化完成")
 

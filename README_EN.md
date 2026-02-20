@@ -21,7 +21,8 @@ This project provides all new AI Agent developers with an extremely low learning
 - 📋 **Task Planning** - Generate structured plans before execution, reduce ineffective operations by 30-50% (v1.1.0)
 - 🧠 **Code Analysis** - Parse AST, extract function signatures, analyze dependencies (v1.1.0)
 - 🗜️ **Context Compression** - Auto-compress conversation history, support long conversations without token overflow (v1.1.0)
-- 🔌 **MCP Protocol Support** - Integrate any MCP tools, unlimited extensibility (v1.2.0) ⭐ New
+- 🔌 **MCP Protocol Support** - Integrate any MCP tools, unlimited extensibility (v1.2.0)
+- 🎯 **Skill Expert System** - Auto-activate domain expert capabilities based on task, inject specialized prompts and tools (v1.4.0) ⭐ New
 
 ### 🛠️ Tool Capabilities
 - 📝 **Code Editing** - Precisely edit specific file lines with insert/replace/delete
@@ -63,6 +64,15 @@ This project provides all new AI Agent developers with an extremely low learning
 - **Lifecycle Management** - Auto-start and stop MCP server processes
 - **Common MCP Support** - Playwright, Context7, Filesystem, SQLite, etc.
 - **Detailed Documentation** - See [MCP_GUIDE.md](MCP_GUIDE.md) for complete integration guide
+
+#### 🎯 Skill Expert System ⭐ v1.4.0 New
+- **Auto-Activation** - Automatically select and activate relevant domain expert skills based on task description
+- **3 Built-in Experts** - Python Expert, Database Expert, Frontend Dev Expert, ready out of the box
+- **Specialized Tool Injection** - Each skill can carry specialized tools (e.g., `python_best_practices`, `sql_review`)
+- **Prompt Enhancement** - Activated skills auto-inject domain best practices into the system prompt
+- **Custom Skills** - Support JSON config files for quick custom skill creation, no code needed
+- **Python Class Extension** - For complex scenarios, define skills as Python classes with custom tools
+- **Detailed Documentation** - See [SKILL_GUIDE.md](SKILL_GUIDE.md) for complete guide
 
 ### 🤖 Multi-Model Support
 - **DeepSeek** - Default model, cost-effective
@@ -246,9 +256,10 @@ Main Menu:
   2. Multi-turn Conversation Mode
   3. View Available Tools
   4. Configuration Settings
-  5. Exit Program
+  5. View Available Skills
+  6. Exit Program
 
-Please select an option (1-5):
+Please select an option (1-6):
 ```
 
 ### Command-line Mode (Quick Execution)
@@ -349,6 +360,40 @@ Only 3 steps, no code needed:
 3. Tools automatically available
 
 See: [MCP_GUIDE.md](MCP_GUIDE.md)
+
+### Example 0.6: Skill Expert System ⭐ v1.4.0
+
+The agent automatically activates relevant skills based on the task, no manual configuration needed:
+
+```bash
+# Python Expert auto-activated
+python main.py "Write a Python script to parse CSV files with type hints"
+# 🎯 Activated skills: Python Expert
+
+# Database Expert + Python Expert auto-activated
+python main.py "Optimize the SQL queries in my Django project"
+# 🎯 Activated skills: Python Expert, Database Expert
+
+# Frontend Dev Expert auto-activated
+python main.py "Create a React component to display a user list"
+# 🎯 Activated skills: Frontend Dev Expert
+```
+
+#### Create Custom Skills
+
+Simply create a JSON file in the `dm_agent/skills/custom/` directory:
+
+```json
+{
+  "name": "devops_expert",
+  "display_name": "DevOps Expert",
+  "description": "Docker, K8s, CI/CD best practices guidance",
+  "keywords": ["docker", "kubernetes", "ci/cd", "deploy"],
+  "prompt_addition": "You now have DevOps expert capabilities..."
+}
+```
+
+See: [SKILL_GUIDE.md](SKILL_GUIDE.md)
 
 ### Example 1: Code Editing
 ```bash
@@ -462,7 +507,13 @@ Dynamically adjust runtime parameters and optionally save permanently:
 
 After modification, you can choose to save to `config.json`, which will be automatically loaded on next startup.
 
-### 5️⃣ Exit Program
+### 5️⃣ View Skills List ⭐ v1.4.0 New
+View all available expert skills and their status:
+- Display skill name, description, keywords, and specialized tool count
+- Distinguish between built-in and custom skills
+- Show current activation status
+
+### 6️⃣ Exit Program
 Safely exit the application.
 
 ## ⚙️ Configuration Management
@@ -533,6 +584,18 @@ dm-code-agent/
 │   │   ├── client.py             # MCP client
 │   │   ├── config.py             # MCP configuration management
 │   │   └── manager.py            # MCP manager
+│   ├── skills/                    # Skill expert system (v1.4.0) ⭐ New
+│   │   ├── __init__.py           # Module exports
+│   │   ├── base.py               # Skill base class and metadata
+│   │   ├── selector.py           # Skill auto-selector
+│   │   ├── manager.py            # Skill manager
+│   │   ├── builtin/              # Built-in skills
+│   │   │   ├── __init__.py
+│   │   │   ├── python_expert.py  # Python Expert
+│   │   │   ├── db_expert.py      # Database Expert
+│   │   │   └── frontend_dev.py   # Frontend Dev Expert
+│   │   └── custom/               # Custom skills (JSON files)
+│   │       └── .gitkeep
 │   ├── memory/                    # Memory and context management (v1.1.0)
 │   │   ├── __init__.py
 │   │   └── context_compressor.py # Context compressor
@@ -552,6 +615,7 @@ dm-code-agent/
 ├── mcp_config.json.example        # MCP configuration example (v1.2.0)
 ├── .gitignore                     # Git ignore rules
 ├── MCP_GUIDE.md                   # MCP integration guide (v1.2.0)
+├── SKILL_GUIDE.md                 # Skill system guide (v1.4.0) ⭐ New
 ├── README.md                      # Chinese documentation
 └── README_EN.md                   # English documentation
 ```

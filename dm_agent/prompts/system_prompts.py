@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import List
 from ..tools.base import Tool
-from code_agent_prompt import SYSTEM_PROMPT
+from .code_agent_prompt import SYSTEM_PROMPT
 
 
 def build_code_agent_prompt(tools: List[Tool]) -> str:

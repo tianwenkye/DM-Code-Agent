@@ -55,6 +55,7 @@ class ReactAgent:
         step_callback: Optional[Callable[[int, Step], None]] = None,   # 步骤回调函数
         enable_planning: bool = True,      # 是否启用规划
         enable_compression: bool = True,   # 是否启用上下文压缩
+        skill_manager: Optional[Any] = None,  # 技能管理器
     ) -> None:
         """
         初始化 ReactAgent 实例
@@ -105,6 +106,11 @@ class ReactAgent:
         self.enable_compression = enable_compression
         self.compressor = ContextCompressor(client, compress_every=5, keep_recent=3) if enable_compression else None
 
+        # 技能管理器
+        self.skill_manager = skill_manager
+        self._base_system_prompt = self.system_prompt
+        self._base_tools = dict(self.tools)
+
     def run(self, task: str, *, max_steps: Optional[int] = None) -> Dict[str, Any]:
         """
         执行指定任务
@@ -134,6 +140,10 @@ class ReactAgent:
 
         steps: List[Step] = []
         limit = max_steps or self.max_steps # 获取最大步骤数
+
+        # 技能自动选择
+        if self.skill_manager:
+            self._apply_skills_for_task(task)
 
         # 第一步：生成计划（如果启用）
         plan : List[PlanStep] = []
@@ -296,6 +306,40 @@ class ReactAgent:
             "final_answer": "达到步骤限制但未完成。",
             "steps": [step.__dict__ for step in steps],
         }
+
+    def _apply_skills_for_task(self, task: str) -> None:
+        """根据任务自动选择并激活相关技能。"""
+        # 恢复基础状态，避免上一次任务的技能残留
+        self.system_prompt = self._base_system_prompt
+        self.tools = dict(self._base_tools)
+
+        # 自动选择
+        selected = self.skill_manager.select_skills_for_task(task)
+        if not selected:
+            self.skill_manager.deactivate_all()
+            return
+
+        # 激活选中技能
+        self.skill_manager.activate_skills(selected)
+
+        # 追加技能 prompt
+        prompt_addition = self.skill_manager.get_active_prompt_additions()
+        if prompt_addition:
+            self.system_prompt += prompt_addition
+
+        # 合并技能工具
+        skill_tools = self.skill_manager.get_active_tools()
+        for tool in skill_tools:
+            self.tools[tool.name] = tool
+
+        # 打印激活信息
+        display_names = []
+        for name in selected:
+            skill = self.skill_manager.skills.get(name)
+            if skill:
+                display_names.append(skill.get_metadata().display_name)
+        if display_names:
+            print(f"\n🎯 已激活技能：{', '.join(display_names)}")
 
     def _build_user_prompt(self, task: str, steps: List[Step], plan: List[PlanStep] = None) -> str:
         """
