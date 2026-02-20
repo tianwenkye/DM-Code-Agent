@@ -196,45 +196,6 @@ export DEEPSEEK_API_KEY="your_api_key_here"
 
 ## 🚀 Quick Start
 
-### 🌐 Web UI Mode (Recommended) ⭐ v1.3.0+
-
-The modern web interface delivers real-time conversations, visual settings, and tool management.
-
-#### Install frontend dependencies (first time only)
-
-```bash
-# enter the frontend folder
-cd frontend
-
-# requires Node.js 16+
-npm install
-```
-
-#### Launch the system
-
-**1. Start the backend (project root):**
-```bash
-python app.py
-```
-
-**2. Start the frontend (new terminal, `frontend/` directory):**
-```bash
-cd frontend
-npm run dev
-```
-
-**3. Open the interface:**
-Visit **http://localhost:3000** in your browser.
-
-
-#### 🖥️ UI Highlights (actively refined)
-- **Wide two-column layout** – scales up to 1920px+ so prompts/plans live on the left and live status/logs on the right.
-- **Scroll-inside cards** – execution plan, status, and logs keep fixed heights and scroll internally, keeping the page calm even for long tasks.
-- **Collapsible long replies** – messages longer than ~600 characters or 12 lines collapse automatically; click “Expand all / Collapse” to toggle readability.
-- **Gradients & breathing cues** – subtle gradients and animated status pills make it easy to spot the agent’s progress at a glance.
-
----
-
 ### Interactive Mode (Recommended)
 
 Run the program directly to enter the friendly menu interface:

@@ -316,38 +316,6 @@ Skill 系统采用混合选择策略，自动为任务匹配最相关的技能�
 
 ---
 
-## Web API
-
-### 获取技能列表
-
-```
-GET /api/skills
-```
-
-**响应示例**：
-
-```json
-{
-  "status": "success",
-  "skills": [
-    {
-      "name": "python_expert",
-      "display_name": "Python 专家",
-      "description": "提供 Python 编程最佳实践、代码规范和性能优化指导",
-      "keywords": ["python", "pip", "pytest", "..."],
-      "priority": 5,
-      "version": "1.0.0",
-      "tools_count": 1,
-      "is_active": false,
-      "is_builtin": true
-    }
-  ],
-  "count": 3
-}
-```
-
----
-
 ## 常见问题
 
 ### Q1: 技能没有被自动激活怎么办？
