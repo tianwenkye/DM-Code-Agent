@@ -20,7 +20,7 @@ class GLMClient(BaseLLMClient):
         self,
         api_key: str,
         *,
-        model: str = "xxx",
+        model: str = "ep-20260210175539-4gr98",
         base_url: str = "https://ark.cn-beijing.volces.com/api/v3",
         endpoint: str = "/chat/completions",
         timeout: int = 600,
