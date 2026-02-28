@@ -80,7 +80,7 @@ def create_llm_client(
     elif provider_lower == "glm":
         params = {
             "api_key": api_key,
-            "model": model or "xxx",
+            "model": model or "ep-20260210175539-4gr98",
             "base_url": base_url or "https://ark.cn-beijing.volces.com/api/v3",
             "timeout": timeout,
         }
