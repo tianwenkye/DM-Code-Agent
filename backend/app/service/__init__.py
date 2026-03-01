@@ -17,6 +17,7 @@ from .clients import (
 from .tools import Tool, default_tools
 from .prompts import build_code_agent_prompt
 from .skills import BaseSkill, ConfigSkill, SkillMetadata, SkillManager
+from .agent_service import AgentService, get_agent_service
 
 __version__ = "1.0.0"
 
@@ -43,4 +44,7 @@ __all__ = [
     "ConfigSkill",
     "SkillMetadata",
     "SkillManager",
+    # Agent Service
+    "AgentService",
+    "get_agent_service",
 ]

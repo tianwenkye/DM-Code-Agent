@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE Test</title>
+</head>
+<body>
+    <h1>SSE Test</h1>
+    <button onclick="testSSE()">Test SSE</button>
+    <div id="output"></div>
+
+    <script>
+        function testSSE() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Starting SSE connection...</p>';
+
+            fetch('http://localhost:8000/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: '测试',
+                    provider: 'glm',
+                    model: 'ep-20260210175539-4gr98',
+                    base_url: 'https://ark.cn-beijing.volces.com/api/v3'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                output.innerHTML += `<p>Session created: ${data.session_id}</p>`;
+                
+                const eventSource = new EventSource(`http://localhost:8000/api/chat/${data.session_id}/stream`);
+                
+                eventSource.onopen = () => {
+                    output.innerHTML += '<p>SSE connection opened!</p>';
+                };
+                
+                eventSource.onmessage = (event) => {
+                    output.innerHTML += `<p>Message: ${event.data}</p>`;
+                    const data = JSON.parse(event.data);
+                    if (data.is_final) {
+                        eventSource.close();
+                        output.innerHTML += '<p>Stream closed (final)</p>';
+                    }
+                };
+                
+                eventSource.onerror = (error) => {
+                    output.innerHTML += `<p>Error: ${error}</p>`;
+                    eventSource.close();
+                };
+            })
+            .catch(error => {
+                output.innerHTML += `<p>Error: ${error}</p>`;
+            });
+        }
+    </script>
+</body>
+</html>
