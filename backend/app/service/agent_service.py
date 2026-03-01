@@ -51,6 +51,8 @@ class AgentService:
         self.mcp: Optional[MCPManager] = None
         self.skill_manager: Optional[SkillManager] = None
         self._initialized = False
+        self.rag_enabled = True
+        self.rag_service = None
 
     async def initialize(self) -> None:
         """初始化 MCP 和技能管理器"""
@@ -73,6 +75,15 @@ class AgentService:
         except Exception as e:
             print(f"⚠ 初始化 MCP/技能管理器失败：{e}")
 
+        try:
+            if self.rag_enabled:
+                from .core.retrieval_service import RetrievalService
+                self.rag_service = RetrievalService()
+                print("✓ RAG服务已初始化")
+        except Exception as e:
+            print(f"⚠ RAG服务初始化失败：{e}")
+            self.rag_enabled = False
+
     def _get_api_key(self, provider: str) -> str | None:
         """根据提供商获取 API 密钥"""
         provider_env_map = {
@@ -92,6 +103,7 @@ class AgentService:
         base_url: Optional[str] = None,
         max_steps: int = 100,
         temperature: float = 0.7,
+        es_index_names: Optional[List[str]] = None,
     ) -> str:
         """创建新会话"""
         await self.initialize()
@@ -146,6 +158,8 @@ class AgentService:
             temperature=temperature,
             step_callback=step_callback,
             skill_manager=self.skill_manager,
+            rag_service=self.rag_service if self.rag_enabled else None,
+            es_index_names=es_index_names or [],
         )
 
         session = Session(
@@ -173,8 +187,22 @@ class AgentService:
         logger.info(f"会话 {session_id} 状态设置为运行中")
 
         try:
-            logger.info(f"调用 agent.run，任务: {task[:50]}...")
-            result = await asyncio.to_thread(session.agent.run, task)
+            enhanced_task = task
+            if self.rag_enabled and session.agent.rag_service and session.agent.es_index_names:
+                try:
+                    retrieval_results = session.agent.rag_service.retrieve_content(
+                        question=task,
+                        index_names=session.agent.es_index_names
+                    )
+                    enhanced_task = session.agent.rag_service.build_enhanced_task(
+                        task, retrieval_results
+                    )
+                    print(f"✓ RAG检索完成，检索到 {len(retrieval_results)} 个相关文档块")
+                except Exception as e:
+                    print(f"⚠ RAG检索失败：{e}，使用原始任务")
+            
+            logger.info(f"调用 agent.run，任务: {enhanced_task[:50]}...")
+            result = await asyncio.to_thread(session.agent.run, enhanced_task)
             logger.info(f"agent.run 完成，结果: {str(result)[:100]}...")
 
             final_answer = result.get("final_answer", "")

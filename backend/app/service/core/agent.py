@@ -56,6 +56,8 @@ class ReactAgent:
         enable_planning: bool = True,      # 是否启用规划
         enable_compression: bool = True,   # 是否启用上下文压缩
         skill_manager: Optional[Any] = None,  # 技能管理器
+        rag_service: Optional[Any] = None,  # RAG服务
+        es_index_names: Optional[List[str]] = None,  # ES索引列表
     ) -> None:
         """
         初始化 ReactAgent 实例
@@ -70,6 +72,8 @@ class ReactAgent:
                 步骤执行回调函数，可用于实时监控执行过程，默认为None
             enable_planning (bool, optional): 是否启用任务规划功能，默认为True
             enable_compression (bool, optional): 是否启用上下文压缩功能，默认为True
+            rag_service (Optional[Any], optional): RAG服务实例，默认为None
+            es_index_names (Optional[List[str]], optional): ES索引列表，默认为None
             
         Raises:
             ValueError: 当提供的工具列表为空时抛出异常
@@ -110,6 +114,10 @@ class ReactAgent:
         self.skill_manager = skill_manager
         self._base_system_prompt = self.system_prompt
         self._base_tools = dict(self.tools)
+        
+        # RAG服务
+        self.rag_service = rag_service
+        self.es_index_names = es_index_names or []
 
     def run(self, task: str, *, max_steps: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -353,7 +361,15 @@ class ReactAgent:
         Returns:
             prompt (str): 构建好的用户提示词字符串
         """
-        lines : List[str] = [f"任务：{task.strip()}"]
+        lines : List[str] = []
+        
+        # 检查task是否包含RAG检索结果
+        if "=== RAG检索结果 ===" in task:
+            # task已经是增强后的，直接使用
+            lines.append(task.strip())
+        else:
+            # 原始task
+            lines.append(f"任务：{task.strip()}")
 
         # 如果有计划，添加到提示中
         if plan:
