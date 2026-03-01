@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from dm_agent import (
+from . import (
     LLMError,
     ReactAgent,
     Tool,
@@ -23,10 +23,10 @@ from dm_agent import (
     default_tools,
     PROVIDER_DEFAULTS,
 )
-from dm_agent.mcp import MCPManager, load_mcp_config
-from dm_agent.skills import SkillManager
+from .mcp import MCPManager, load_mcp_config
+from .skills import SkillManager
 
-from .models import StepEvent
+from ..schemas.models import StepEvent
 
 
 load_dotenv()

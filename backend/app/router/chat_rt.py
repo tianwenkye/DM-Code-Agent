@@ -1,46 +1,20 @@
-"""FastAPI 后端服务"""
+"""聊天相关路由"""
 
 from __future__ import annotations
 
-import asyncio
 import json
-from contextlib import asynccontextmanager
 from typing import Dict
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
-from .agent_service import get_agent_service
-from .models import ChatRequest, ChatResponse, ErrorResponse
+from ..service.agent_service import get_agent_service
+from ..schemas.models import ChatRequest, ChatResponse
+
+router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    agent_service = get_agent_service()
-    await agent_service.initialize()
-    yield
-    await agent_service.cleanup()
-
-
-app = FastAPI(
-    title="DM-Code-Agent API",
-    description="基于 ReAct 智能体的聊天 API",
-    version="1.0.0",
-    lifespan=lifespan,
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.post("/api/chat", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse)
 async def create_chat(request: ChatRequest, background_tasks: BackgroundTasks):
     """创建聊天会话并执行任务"""
     agent_service = get_agent_service()
@@ -67,7 +41,7 @@ async def create_chat(request: ChatRequest, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"服务器错误：{e}")
 
 
-@app.get("/api/chat/{session_id}/stream")
+@router.get("/{session_id}/stream")
 async def stream_chat(session_id: str):
     """流式获取执行步骤（SSE）"""
     agent_service = get_agent_service()
@@ -85,7 +59,7 @@ async def stream_chat(session_id: str):
     return EventSourceResponse(event_generator())
 
 
-@app.delete("/api/chat/{session_id}")
+@router.delete("/{session_id}")
 async def delete_chat(session_id: str):
     """删除聊天会话"""
     agent_service = get_agent_service()
@@ -97,7 +71,7 @@ async def delete_chat(session_id: str):
     return {"message": "会话已删除"}
 
 
-@app.post("/api/chat/{session_id}/reset")
+@router.post("/{session_id}/reset")
 async def reset_chat(session_id: str):
     """重置会话历史"""
     agent_service = get_agent_service()
@@ -107,15 +81,3 @@ async def reset_chat(session_id: str):
 
     agent_service.reset_session(session_id)
     return {"message": "会话历史已重置"}
-
-
-@app.get("/api/health")
-async def health_check():
-    """健康检查"""
-    return {"status": "ok"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)

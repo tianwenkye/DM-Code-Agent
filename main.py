@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 
-from dm_agent import (
+from backend.app.service import (
     LLMError,
     ReactAgent,
     Tool,
@@ -19,8 +19,8 @@ from dm_agent import (
     default_tools,
     PROVIDER_DEFAULTS,
 )
-from dm_agent.mcp import MCPManager, load_mcp_config
-from dm_agent.skills import SkillManager
+from backend.app.service.mcp import MCPManager, load_mcp_config
+from backend.app.service.skills import SkillManager
 
 # 尝试导入 colorama 用于彩色输出
 try:
