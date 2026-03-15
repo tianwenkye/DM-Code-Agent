@@ -19,6 +19,8 @@ from .code_analysis_tools import (
 )
 from .rag_tools import rag_search
 from .web_search_tools import web_search_answer
+from .ask_tool import AskTool, AskToolConfig, ask_user
+
 def task_complete(arguments: Dict[str, Any]) -> str:
     """
     标记任务完成的工具。调用此工具将自动结束任务。
@@ -54,7 +56,9 @@ def task_complete(arguments: Dict[str, Any]) -> str:
 def default_tools(
     include_mcp: bool = True,
     mcp_tools: Optional[List[Tool]] = None,
-    include_rag: bool = True
+    include_rag: bool = True,
+    include_ask: bool = True,
+    ask_tool_config: Optional[AskToolConfig] = None
 ) -> List[Tool]:
     """返回默认工具集
 
@@ -62,6 +66,8 @@ def default_tools(
         include_mcp (bool): 是否包含 MCP 工具
         mcp_tools (Optional[List[Tool]]): MCP 工具列表（可选）
         include_rag (bool): 是否包含 RAG 工具
+        include_ask (bool): 是否包含 AskTool
+        ask_tool_config (Optional[AskToolConfig]): AskTool 配置
 
     Returns:
         tools (List[Tool]): 默认工具列表
@@ -192,6 +198,11 @@ def default_tools(
             )
         )
 
+    # 添加 AskTool
+    if include_ask:
+        ask_tool_instance = AskTool(config=ask_tool_config)
+        tools.append(ask_tool_instance.to_tool())
+
     return tools
 
 
@@ -199,4 +210,7 @@ __all__ = [
     "Tool",
     "default_tools",
     "task_complete",
+    "AskTool",
+    "AskToolConfig",
+    "ask_user",
 ]

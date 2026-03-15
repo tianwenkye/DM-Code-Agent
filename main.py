@@ -22,6 +22,7 @@ from dm_agent import (
 )
 from dm_agent.mcp import MCPManager, load_mcp_config
 from dm_agent.skills import SkillManager
+from dm_agent.core.user_input_handler import UserInputHandler, InterventionConfig
 
 # 尝试导入 colorama 用于彩色输出
 try:
@@ -30,7 +31,6 @@ try:
     COLORS_AVAILABLE = True
 except ImportError:
     COLORS_AVAILABLE = False
-    # 如果没有 colorama，定义空的颜色常量
     class Fore:
         GREEN = ""
         YELLOW = ""
@@ -54,6 +54,7 @@ class Config:
     max_steps: int = 100
     temperature: float = 0.7
     show_steps: bool = False
+    enable_intervention: bool = True
 
 
 # 配置文件路径
@@ -475,37 +476,45 @@ def execute_task(config: Config, tools: List[Tool], skill_manager: SkillManager 
         return
 
     try:
-        # 创建客户端和智能体
         client = create_llm_client(
             provider=config.provider,
             api_key=config.api_key,
             model=config.model,
             base_url=config.base_url,
         )
-
-        # 创建步骤回调函数
+        
         step_callback = create_step_callback(config.show_steps)
+        
+        user_input_handler = None
+        if config.enable_intervention:
+            intervention_config = InterventionConfig(enable_hotkeys=True)
+            user_input_handler = UserInputHandler(config=intervention_config)
+            user_input_handler.start()
+        
+        try:
+            agent = ReactAgent(
+                client,
+                tools,
+                max_steps=config.max_steps,
+                temperature=config.temperature,
+                step_callback=step_callback,
+                skill_manager=skill_manager,
+                user_input_handler=user_input_handler,
+                enable_intervention=config.enable_intervention,
+            )
 
-        agent = ReactAgent(
-            client,
-            tools,
-            max_steps=config.max_steps,
-            temperature=config.temperature,
-            step_callback=step_callback,
-            skill_manager=skill_manager,
-        )
+            print(f"\n{Fore.CYAN}正在执行任务...{Style.RESET_ALL}\n")
+            print_separator("-")
 
-        print(f"\n{Fore.CYAN}正在执行任务...{Style.RESET_ALL}\n")
-        print_separator("-")
+            result = agent.run(task)
 
-        # 执行任务
-        result = agent.run(task)
-
-        # 显示最终结果
-        print(f"\n{Fore.GREEN}{Style.BRIGHT}最终答案：{Style.RESET_ALL}\n")
-        print(result.get("final_answer", ""))
-        print()
-        print_separator("-")
+            print(f"\n{Fore.GREEN}{Style.BRIGHT}最终答案：{Style.RESET_ALL}\n")
+            print(result.get("final_answer", ""))
+            print()
+            print_separator("-")
+        finally:
+            if user_input_handler:
+                user_input_handler.stop()
 
     except LLMError as e:
         print(f"\n{Fore.RED}{Style.BRIGHT}✗ API 错误：{Style.RESET_ALL}{e}")

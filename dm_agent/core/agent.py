@@ -14,6 +14,7 @@ from ..prompts import build_code_agent_prompt
 from ..memory.context_compressor import ContextCompressor
 from .planner import TaskPlanner, PlanStep
 from ..reflection import reflection
+from .user_input_handler import UserInputHandler, UserIntervention, InterventionType
 
 @dataclass
 class Step:
@@ -60,6 +61,8 @@ class ReactAgent:
         skill_manager: Optional[Any] = None,
         enable_rag: bool = True,
         rag_config: Optional[Dict[str, Any]] = None,
+        user_input_handler: Optional[UserInputHandler] = None,
+        enable_intervention: bool = True,
     ) -> None:
         """
         初始化 ReactAgent 实例
@@ -140,6 +143,11 @@ class ReactAgent:
                 print(f"警告: RAG初始化失败: {e}")
                 self.enable_rag = False
 
+        self.user_input_handler = user_input_handler
+        self.enable_intervention = enable_intervention
+        if enable_intervention and not user_input_handler:
+            self.user_input_handler = UserInputHandler()
+
     def _log_conversation_history(self, action_description: str = "conversation_history 变动") -> None:
         """记录 conversation_history 变动到日志文件"""
         try:
@@ -186,10 +194,10 @@ class ReactAgent:
             raise ValueError("任务必须是非空字符串。")
 
         steps: List[Step] = []
-        limit = max_steps or self.max_steps # 获取最大步骤数
+        limit = max_steps or self.max_steps
 
         retry_time = 0
-        retry_action: string = ''
+        retry_action: str = ''
 
         # 技能自动选择
         if self.skill_manager:
@@ -227,7 +235,41 @@ class ReactAgent:
         self._log_conversation_history("添加新任务到对话历史")
 
         for step_num in range(1, limit + 1):
-            # 第二步：压缩上下文（如果需要）
+            if self.enable_intervention and self.user_input_handler:
+                intervention = self.user_input_handler.check_intervention(timeout=0.1)
+                if intervention:
+                    if intervention.type == InterventionType.CANCEL:
+                        return {
+                            "final_answer": "任务已被用户取消",
+                            "steps": [step.__dict__ for step in steps]
+                        }
+                    elif intervention.type == InterventionType.PAUSE:
+                        print("\n⏸️ 任务已暂停，等待恢复...")
+                        self.user_input_handler.wait_for_resume()
+                        print("▶️ 任务已恢复")
+                        continue
+                    elif intervention.type == InterventionType.INPUT:
+                        self.conversation_history.append({
+                            "role": "user",
+                            "content": f"用户干预: {intervention.content}"
+                        })
+                        self._log_conversation_history("添加用户干预到历史记录")
+                    elif intervention.type == InterventionType.SKIP:
+                        self.conversation_history.append({
+                            "role": "user",
+                            "content": "用户请求跳过当前步骤"
+                        })
+                        continue
+            
+            if self.user_input_handler:
+                pending_inputs = self.user_input_handler.get_pending_inputs()
+                for user_input in pending_inputs:
+                    self.conversation_history.append({
+                        "role": "user",
+                        "content": f"用户补充指令: {user_input}"
+                    })
+                    self._log_conversation_history("添加用户补充指令到历史记录")
+            
             messages_to_send = [{"role": "system", "content": self.system_prompt}] + self.conversation_history
 
             if self.enable_compression and self.compressor:

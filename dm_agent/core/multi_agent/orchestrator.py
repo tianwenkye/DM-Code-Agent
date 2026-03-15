@@ -18,6 +18,7 @@ from dm_agent.core.multi_agent.base import WorkerConfig
 from dm_agent.core.multi_agent.registry import AgentRegistry
 from dm_agent.core.multi_agent.workers import ExplorerWorker, CoderWorker, TesterWorker
 from dm_agent.clients.base_client import BaseLLMClient
+from dm_agent.core.user_input_handler import UserInputHandler, UserIntervention, InterventionType
 
 
 class TaskStrategy(Enum):
@@ -70,7 +71,9 @@ class Orchestrator:
         client: BaseLLMClient,
         max_workers: int = 3,
         timeout: float = 300.0,
-        log_dir: str = "dm_agent/log"
+        log_dir: str = "dm_agent/log",
+        user_input_handler: Optional[UserInputHandler] = None,
+        enable_intervention: bool = True
     ):
         self.client = client
         self.agent_id = f"orchestrator_{str(uuid.uuid4())[:8]}"
@@ -85,6 +88,12 @@ class Orchestrator:
         self._task_history: List[DecomposedTask] = []
         self._shared_context: Dict[str, Any] = {}
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
+        
+        self.user_input_handler = user_input_handler
+        self.enable_intervention = enable_intervention
+        if enable_intervention and not user_input_handler:
+            self.user_input_handler = UserInputHandler()
+            self.user_input_handler.start()
     
     def _log(self, event_type: str, message: str, details: Optional[Dict] = None) -> None:
         self.logger.log(
@@ -246,6 +255,19 @@ class Orchestrator:
     
     def _execute_single_task(self, task: SubTask) -> Dict[str, Any]:
         """执行单个子任务"""
+        if self.enable_intervention and self.user_input_handler:
+            intervention = self.user_input_handler.check_intervention(timeout=0.1)
+            if intervention:
+                if intervention.type == InterventionType.CANCEL:
+                    task.status = TaskStatus.CANCELLED
+                    return {
+                        "task_id": task.task_id,
+                        "error": "用户取消",
+                        "result": None
+                    }
+                elif intervention.type == InterventionType.INPUT:
+                    task.context["user_input"] = intervention.content
+        
         self._log(
             "TASK_START",
             f"开始执行子任务 {task.task_id}: {task.description[:100]}..."
